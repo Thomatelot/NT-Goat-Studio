@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NT Goat Studio</title>
+<style>
+:root{
+  --mat:#1d2147; --mat-2:#262b5a; --line:#323870; --ink:#e9e6f5; --ink-2:#a9a6c8; --ink-3:#7c7aa3;
+  --gold:#c9a14a; --gold-ink:#20170a;
+  --normal:#d9b95b; --effect:#cc7a3e; --ritual:#5b8fd6; --fusion:#8c66c4; --spell:#2f9c86; --trap:#b04c8c;
+  --danger:#e26d6d; --ok:#79c58f;
+  --serif:"Palatino Linotype","Book Antiqua",Palatino,"URW Palladio L",Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--mat);color:var(--ink);font:15px/1.5 var(--sans);display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+a{color:var(--gold)}
+
+/* rail */
+.rail{border-right:1px solid var(--line);padding:22px 18px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{font-family:var(--serif);font-size:24px;line-height:1.15}
+.brand small{display:block;font-family:var(--sans);font-size:13px;color:var(--ink-3);margin-top:4px}
+.romcard{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--mat-2);font-size:13px;color:var(--ink-2)}
+.romcard strong{display:block;color:var(--ink);font-size:14px;word-break:break-word}
+.romcard .okline{color:var(--ok)}
+nav{display:flex;flex-direction:column;gap:2px}
+nav button{all:unset;cursor:pointer;padding:9px 12px;border-radius:8px;color:var(--ink-2)}
+nav button[aria-current="true"]{background:var(--mat-2);color:var(--ink);box-shadow:inset 3px 0 0 var(--gold)}
+nav button:hover{color:var(--ink)}
+nav button:disabled{opacity:.35;cursor:default}
+.rail .foot{margin-top:auto;font-size:12px;color:var(--ink-3)}
+
+main{padding:30px 40px 80px;max-width:1180px;width:100%}
+h1{font-family:var(--serif);font-weight:400;font-size:34px;margin:0 0 6px}
+h2{font-family:var(--serif);font-weight:400;font-size:22px;margin:30px 0 10px}
+.lede{color:var(--ink-2);max-width:68ch;margin:0 0 22px}
+.view{display:none}.view.on{display:block}
+
+.btn{border:1px solid var(--line);background:var(--mat-2);padding:8px 14px;border-radius:8px;cursor:pointer}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--gold);color:var(--gold-ink);border-color:var(--gold);font-weight:600}
+.btn.small{padding:4px 9px;font-size:13px}
+input[type=text],select,textarea{background:#151938;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+/* load */
+.drop{display:block;cursor:pointer;border:2px dashed var(--line);border-radius:14px;padding:46px;text-align:center;color:var(--ink-2);max-width:640px}
+.drop.hover{border-color:var(--gold);color:var(--ink)}
+.drop p{margin:6px 0}
+
+/* legend + tracks */
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);margin-bottom:18px}
+.legend span::before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;background:var(--c)}
+.t1{--c:var(--normal)}.t2{--c:var(--effect)}.t3{--c:var(--ritual)}.t4{--c:var(--fusion)}.tc{--c:var(--spell)}
+.duelist{padding:16px 0;border-top:1px solid var(--line)}
+.duelist header{display:flex;align-items:baseline;gap:12px;margin-bottom:8px}
+.duelist h3{font-family:var(--serif);font-weight:400;font-size:19px;margin:0}
+.duelist header .meta{font-size:13px;color:var(--ink-3)}
+.track{display:grid;grid-template-columns:repeat(11,1fr);gap:3px}
+.ruler div{font-size:11px;color:var(--ink-3);text-align:center}
+.ruler div:last-child{color:var(--gold)}
+.lane{display:grid;grid-template-columns:repeat(11,1fr);gap:3px;margin-top:3px}
+.slot{height:30px;border-radius:5px;background:rgba(255,255,255,.035)}
+.slot.post{background:rgba(201,161,74,.07)}
+.bar{height:30px;border-radius:6px;background:var(--c);color:#14122a;font-size:13px;padding:0 10px;display:flex;align-items:center;gap:8px;cursor:pointer;border:0;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.bar b{font-weight:600}
+.bar .f{opacity:.65;font-size:12px}
+.bar.err{outline:2px solid var(--danger)}
+.bar.ovr{background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.18) 0 6px,transparent 6px 12px)}
+.extra-decks{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.extra-decks .bar{height:26px}
+
+/* drawer */
+.drawer{position:fixed;top:0;right:0;height:100vh;width:min(520px,100vw);background:#171b3d;border-left:1px solid var(--line);transform:translateX(100%);transition:transform .22s ease;overflow:auto;padding:24px 26px;z-index:5}
+.drawer.on{transform:none}
+@media (prefers-reduced-motion:reduce){.drawer{transition:none}}
+.drawer .close{position:absolute;top:16px;right:18px}
+.drawer h2{margin-top:0}
+.chip{display:inline-block;font-size:12px;padding:2px 8px;border-radius:20px;background:var(--c);color:#14122a;font-weight:600}
+.cards{list-style:none;padding:0;margin:4px 0 14px}
+.cards li{display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:center;padding:4px 6px;border-radius:6px;cursor:pointer}
+.cards li:hover{background:var(--mat-2)}
+.cards .n{color:var(--ink-3);text-align:right}
+.cards .nm{font-family:var(--serif);font-size:15px;border-left:4px solid var(--k);padding-left:8px}
+.cards .lim{font-size:11px;color:var(--gold)}
+.k-Normal{--k:var(--normal)}.k-Effect{--k:var(--effect)}.k-Ritual{--k:var(--ritual)}.k-Fusion{--k:var(--fusion)}.k-Spell{--k:var(--spell)}.k-Trap{--k:var(--trap)}
+.grp{font-size:13px;color:var(--ink-3);margin-top:12px}
+.cardtext{background:var(--mat-2);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--ink-2);margin:10px 0 16px}
+.cardtext strong{font-family:var(--serif);color:var(--ink);font-size:16px;display:block}
+.err{color:var(--danger);white-space:pre-wrap;font-size:13px}
+
+/* difficulty */
+.choices{display:grid;gap:8px;max-width:680px}
+.choice{display:flex;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.choice:has(input:checked){border-color:var(--gold);background:var(--mat-2)}
+.choice input{accent-color:var(--gold)}
+.toggle{display:flex;gap:10px;align-items:flex-start;margin:12px 0;max-width:680px}
+.toggle input{accent-color:var(--gold);margin-top:4px}
+.toggle small{display:block;color:var(--ink-3)}
+table.boosts{border-collapse:collapse;font-size:14px}
+table.boosts td{padding:5px 12px 5px 0;border-bottom:1px solid var(--line)}
+table.boosts td:first-child{font-family:var(--serif)}
+
+/* builder */
+.builder{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.results{max-height:62vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:6px}
+.results li{grid-template-columns:1fr auto auto}
+.stat{color:var(--ink-3);font-size:12px}
+.counts{font-size:13px;color:var(--ink-2);margin:6px 0}
+
+/* hidden */
+.finds{display:grid;gap:14px;max-width:820px}
+.find{border-left:3px solid var(--fusion);padding:2px 0 2px 16px}
+.find h3{font-family:var(--serif);font-weight:400;font-size:18px;margin:0}
+.find .st{font-size:12px;color:var(--gold)}
+.find p{margin:4px 0;color:var(--ink-2);max-width:72ch}
+
+.log{background:#121531;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px;white-space:pre-wrap;max-width:780px;color:var(--ink-2)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--gold-ink);padding:9px 16px;border-radius:8px;font-weight:600;display:none;z-index:9}
+
+@media (max-width:860px){
+  body{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  nav{flex-direction:row;flex-wrap:wrap}
+  main{padding:22px 16px 60px}
+  .builder{grid-template-columns:1fr}
+  .bar .f{display:none}
+
+  .rail{overflow:visible}
+}
+</style>
+</head>
+<body>
+<aside class="rail">
+  <div class="brand">NT Goat Studio<small>Goat Format opponents for Yu-Gi-Oh! Nightmare Troubadour</small></div>
+  <div class="romcard" id="romcard">No ROM loaded</div>
+  <nav id="nav">
+    <button data-v="load" aria-current="true">Load ROM</button>
+    <button data-v="story" disabled>Story decks</button>
+    <button data-v="difficulty" disabled>Difficulty</button>
+    <button data-v="builder" disabled>Deck builder</button>
+    <button data-v="hidden">Hidden content</button>
+    <button data-v="build" disabled>Build ROM</button>
+  </nav>
+  <div class="foot">Runs on this computer only. Your original ROM is never modified.</div>
+</aside>
+
+<main>
+  <!-- LOAD -->
+  <section class="view on" id="v-load">
+    <h1>Load your ROM</h1>
+    <p class="lede">Use the European release, “Yu-Gi-Oh! - Nightmare Troubadour (Europe) (En,Fr,De,Es,It).nds”. Card names, decks and the story timeline are read from the ROM itself.</p>
+    <label class="drop" id="drop">
+      <p><strong>Drop the .nds file here</strong></p>
+      <p>or click to choose it</p>
+      <input type="file" id="file" accept=".nds" hidden>
+    </label>
+    <h2>Or open it from a path</h2>
+    <div class="row"><input type="text" id="path" size="60" placeholder="C:\Games\Nightmare Troubadour.nds"><button class="btn" id="openpath">Open</button></div>
+    <p class="err" id="loaderr"></p>
+  </section>
+
+  <!-- STORY -->
+  <section class="view" id="v-story">
+    <h1>Story decks</h1>
+    <p class="lede">Each bar is one deck file and the story stages where the game uses it. Stage 10 is the post-game, after Yami Marik. Click a bar to see the decklist or swap it for another deck.</p>
+    <div class="legend"><span class="t1">Rookie</span><span class="t2">Duelist</span><span class="t3">Expert</span><span class="t4">Goat Max</span><span class="tc">Your choice</span></div>
+    <div id="tracks"></div>
+  </section>
+
+  <!-- DIFFICULTY -->
+  <section class="view" id="v-difficulty">
+    <h1>Difficulty</h1>
+    <p class="lede">Opponents get stronger as the story stage rises: Rookie decks are the duelist's own cards with basic support, Duelist decks add the first staples, Expert decks add the full Goat staple suite, and Goat Max decks are complete Goat Format decks built around the duelist.</p>
+    <div class="choices" id="presets"></div>
+    <label class="toggle"><input type="checkbox" id="opt-postgame"><span>Post-game decks for every duelist<small>Duelists with no post-game deck keep their story deck until stage 9 and switch to their Goat Max deck after the ending. This edits the game's stage table (verified in place, same size).</small></span></label>
+    <label class="toggle"><input type="checkbox" id="opt-rename"><span>Rename Goat Max decks<small>“Goat Control”, “Harpie Control”, “Blue-Eyes Gate”… in all five languages. Story-tier decks keep their original names.</small></span></label>
+    <h2>Boss duelists</h2>
+    <p class="lede">A boss steps up one tier from stage 6 and plays Goat Max in the final stretch (stages 8 and 9).</p>
+    <table class="boosts" id="boosts"></table>
+  </section>
+
+  <!-- BUILDER -->
+  <section class="view" id="v-builder">
+    <h1>Deck builder</h1>
+    <p class="lede">Build a deck from the 1,075 cards in Nightmare Troubadour. It's checked live against the April 2005 Goat list; save it to assign it to any duelist from the Story decks view.</p>
+    <div class="builder">
+      <div>
+        <div class="row"><input type="text" id="q" placeholder="Search cards" style="flex:1"><select id="kind"><option value="all">All types</option><option value="normal">Normal</option><option value="effect">Effect</option><option value="ritual">Ritual</option><option value="fusion">Fusion</option><option value="spell">Spell</option><option value="trap">Trap</option></select></div>
+        <ul class="cards results" id="results"></ul>
+        <div class="cardtext" id="btext" hidden></div>
+      </div>
+      <div>
+        <div class="row"><input type="text" id="dname" placeholder="Deck name (max 20)" maxlength="20" style="flex:1"><select id="dload"><option value="">Start from…</option></select></div>
+        <p class="counts" id="dcounts"></p>
+        <div id="dlist"></div>
+        <p class="err" id="derr"></p>
+        <div class="row"><button class="btn primary" id="dsave">Save deck</button><button class="btn" id="dclear">Clear</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HIDDEN -->
+  <section class="view" id="v-hidden">
+    <h1>Hidden content</h1>
+    <p class="lede">What the developers left in the ROM, found by reading the game code and confirmed by booting the game in an emulator. Each developer tool can be opened by building a developer ROM: it boots straight into the tool instead of the title screen, so keep it separate from your story ROM.</p>
+    <div class="finds" id="finds"></div>
+    <h2>Build a developer ROM</h2>
+    <div class="row"><select id="devscene"></select><select id="arenadeck" hidden></select><button class="btn primary" id="devbuild">Build developer ROM</button></div>
+    <div class="log" id="devlog" hidden></div>
+  </section>
+
+  <!-- BUILD -->
+  <section class="view" id="v-build">
+    <h1>Build ROM</h1>
+    <p class="lede" id="buildsum"></p>
+    <div class="row"><button class="btn primary" id="build">Build patched ROM</button><a class="btn" id="dl" hidden href="/api/download?t=__STUDIO_TOKEN__">Download</a></div>
+    <h2>Save to a folder</h2>
+    <div class="row"><input type="text" id="savepath" size="60" placeholder="A folder (D:\TELECHARGEMENTS) or a full file path"><button class="btn" id="savebtn">Save</button></div>
+    <div class="log" id="buildlog" hidden></div>
+    <h2>Plan and settings</h2>
+    <div class="row"><a class="btn" href="/api/report?t=__STUDIO_TOKEN__">Download plan (.txt)</a><a class="btn" href="/api/config?t=__STUDIO_TOKEN__">Export settings</a><label class="btn">Import settings<input type="file" id="cfgfile" accept=".json" hidden></label></div>
+  </section>
+</main>
+
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <button class="btn small close" id="dclose">Close</button>
+  <div id="dbody"></div>
+</aside>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const TIER={1:"Rookie",2:"Duelist",3:"Expert",4:"Goat Max"};
+const TOKEN="__STUDIO_TOKEN__";
+let S={}, PLAN=null, deck={main:{},extra:{}}, kinds={};
+
+async function api(p,o={}){
+  o.headers={...(o.headers||{}),"X-Studio-Token":TOKEN};
+  const r=await fetch(p,o); const t=r.headers.get("content-type")||"";
+  const d=t.includes("json")?await r.json():await r.text();
+  if(!r.ok) throw new Error(d.error||d); return d;
+}
+const post=(p,b)=>api(p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
+function toast(m){const t=$("#toast");t.textContent=m;t.style.display="block";clearTimeout(t._h);t._h=setTimeout(()=>t.style.display="none",2200)}
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+function show(v){$$(".view").forEach(e=>e.classList.toggle("on",e.id==="v-"+v));$$("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.v===v));
+  if(v==="story")renderPlan(); if(v==="builder")search(); if(v==="build")buildSummary(); window.scrollTo(0,0)}
+$("#nav").onclick=e=>{const b=e.target.closest("button");if(b&&!b.disabled)show(b.dataset.v)};
+
+async function refresh(){S=await api("/api/state");
+  if(S.loaded){
+    $("#romcard").innerHTML=`<strong>${esc(S.rom.name)}</strong>${S.rom.cards} cards, game code ${esc(S.rom.code)}<br>${S.banlist_ok?'<span class="okline">Built-in banlist matches Goat</span>':'Banlist differs from Goat'}`;
+    $$("nav button").forEach(b=>b.disabled=false);
+  }
+  renderHidden(); renderDifficulty();
+}
+
+/* load */
+const drop=$("#drop");
+drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("hover")});
+drop.addEventListener("dragleave",()=>drop.classList.remove("hover"));
+drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("hover");if(e.dataTransfer.files[0])upload(e.dataTransfer.files[0])});
+$("#file").onchange=e=>e.target.files[0]&&upload(e.target.files[0]);
+async function upload(f){$("#loaderr").textContent="Reading "+f.name+"…";
+  try{await api("/api/upload?name="+encodeURIComponent(f.name),{method:"POST",body:f});$("#loaderr").textContent="";await refresh();show("story")}
+  catch(e){$("#loaderr").textContent=e.message}}
+$("#openpath").onclick=async()=>{try{await post("/api/open",{path:$("#path").value});$("#loaderr").textContent="";await refresh();show("story")}catch(e){$("#loaderr").textContent=e.message}};
+
+/* story */
+async function renderPlan(){PLAN=await api("/api/plan");const box=$("#tracks");box.innerHTML="";
+  for(const d of PLAN.duelists){
+    const el=document.createElement("div");el.className="duelist";
+    const boss=S.profiles?.[d.id]?.boost?", boss":"";
+    const first=d.levels?d.levels.findIndex(x=>x):-1;
+    el.innerHTML=`<header><h3>${esc(d.name)}</h3><span class="meta">${first>=0?(first===10?"Post-game only":"From stage "+first):"Tournaments"}${boss}</span></header>`;
+    const staged=d.decks.filter(x=>x.stages.length), other=d.decks.filter(x=>!x.stages.length);
+    if(staged.length){
+      const r=document.createElement("div");r.className="track ruler";
+      for(let s=0;s<11;s++)r.innerHTML+=`<div>${s===10?"Post":s}</div>`;el.appendChild(r);
+      for(const k of staged){
+        const lane=document.createElement("div");lane.className="lane";
+        const a=Math.min(...k.stages),b=Math.max(...k.stages);
+        for(let s=0;s<11;s++){if(s===a){lane.appendChild(barEl(k,`grid-column:${a+1}/${b+2}`));s=b;continue}
+          const sl=document.createElement("div");sl.className="slot"+(s===10?" post":"");lane.appendChild(sl)}
+        el.appendChild(lane);
+      }
+    }
+    if(other.length){const x=document.createElement("div");x.className="extra-decks";
+      other.forEach(k=>x.appendChild(barEl(k,"",true)));el.appendChild(x)}
+    box.appendChild(el);
+  }
+}
+function barEl(k,style,tour){const b=document.createElement("button");
+  const t=k.override?"tc":"t"+k.tier;b.className=`bar ${t}${k.error?" err":""}${k.override?" ovr":""}`;b.style.cssText=style;
+  b.innerHTML=`<span>${esc(k.name)}</span><span class="f">${esc(k.file)}</span>`;
+  b.title=`${k.override?"Your choice":TIER[k.tier]}: ${k.name} (${k.file}${tour?", tournament":""})`;b.setAttribute("aria-label",b.title);b.onclick=()=>openDeck(k);return b}
+
+async function openDeck(k){const d=await api("/api/deck?file="+encodeURIComponent(k.file));
+  const opts=[...S.decks.map(x=>`<option value="${esc(x.key)}">${esc(x.name)}${x.note?" – "+esc(x.note):""}</option>`),
+    ...S.dev_decks.map(x=>`<option value="${esc(x.key)}">${esc(x.name)}</option>`)].join("");
+  const stg=k.stages.length?`stages ${Math.min(...k.stages)}–${Math.max(...k.stages)}`:"tournament deck";
+  $("#dbody").innerHTML=`<h2>${esc(d.title||k.name)}</h2>
+   <p><span class="chip ${k.override?"tc":"t"+k.tier}">${k.override?"Your choice":TIER[k.tier]}</span> <span class="stat">${esc(k.file)}, ${stg}, ${d.size} cards</span></p>
+   <p class="stat">${esc(d.note||"")}</p>${d.error?`<p class="err">${esc(d.error)}</p>`:""}
+   ${deckHTML(d)}<div class="cardtext" id="ctext" hidden></div>
+   <h2>Use another deck</h2><div class="row"><select id="ovsel" style="max-width:100%">${opts}</select></div>
+   <div class="row" style="margin-top:10px"><button class="btn primary" id="ovset">Use this deck</button>${k.override?'<button class="btn" id="ovclear">Back to the profile deck</button>':""}</div>`;
+  $("#ovset").onclick=async()=>{await post("/api/override",{file:k.file,key:$("#ovsel").value});closeDrawer();toast("Deck replaced");renderPlan()};
+  if(k.override){$("#ovsel").value=k.override;$("#ovclear").onclick=async()=>{await post("/api/override",{file:k.file,key:null});closeDrawer();toast("Profile deck restored");renderPlan()}}
+  $$("#dbody .cards li").forEach(li=>li.onclick=()=>cardText(li.dataset.id,"#ctext"));
+  $("#drawer").classList.add("on");$("#drawer").setAttribute("aria-hidden","false");$("#dclose").focus();
+}
+function deckHTML(d){const groups={Monsters:[],Spells:[],Traps:[]};
+  for(const c of d.main)(c.kind==="Spell"?groups.Spells:c.kind==="Trap"?groups.Traps:groups.Monsters).push(c);
+  let h="";for(const [g,cs] of Object.entries(groups)){if(!cs.length)continue;const n=cs.reduce((a,c)=>a+c.count,0);
+    h+=`<div class="grp">${g} (${n})</div><ul class="cards">${cs.map(li).join("")}</ul>`}
+  if(d.extra.length)h+=`<div class="grp">Extra deck (${d.extra.reduce((a,c)=>a+c.count,0)})</div><ul class="cards">${d.extra.map(li).join("")}</ul>`;return h}
+function li(c){const lim=c.limit===1?"Limited":c.limit===2?"Semi-limited":"";
+  return `<li data-id="${c.id}" class="k-${c.kind}"><span class="n">${c.count}</span><span class="nm">${esc(c.name)}</span><span class="lim">${lim}</span></li>`}
+async function cardText(id,sel){const c=await api("/api/card?id="+id);const t=$(sel);t.hidden=false;
+  const stats=["Spell","Trap"].includes(c.kind)?c.kind:`${c.kind}, Level ${c.level}, ATK ${c.atk} / DEF ${c.df}`;
+  t.innerHTML=`<strong>${esc(c.name)}</strong><span class="stat">${esc(stats)}</span><br>${esc(c.desc)}`}
+function closeDrawer(){$("#drawer").classList.remove("on");$("#drawer").setAttribute("aria-hidden","true")}
+$("#dclose").onclick=closeDrawer;document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDrawer()});
+
+/* difficulty */
+function renderDifficulty(){if(!S.loaded)return;
+  $("#presets").innerHTML=Object.entries(S.presets).map(([k,v])=>{const [t,...r]=v.split(": ");
+    return `<label class="choice"><input type="radio" name="preset" value="${k}" ${S.options.preset===k?"checked":""}><span><strong>${esc(t)}</strong><br><span class="stat">${esc(r.join(": "))}</span></span></label>`}).join("");
+  $$("input[name=preset]").forEach(i=>i.onchange=()=>setOpt({preset:i.value}));
+  $("#opt-postgame").checked=!!S.options.postgame;$("#opt-rename").checked=S.options.rename!==false;
+  $("#opt-postgame").onchange=e=>setOpt({postgame:e.target.checked});$("#opt-rename").onchange=e=>setOpt({rename:e.target.checked});
+  $("#boosts").innerHTML=Object.entries(S.profiles).map(([id,p])=>`<tr><td>${esc(p.name)}</td><td><select data-id="${id}"><option value="0" ${p.boost==0?"selected":""}>Normal</option><option value="1" ${p.boost==1?"selected":""}>Boss</option></select></td></tr>`).join("");
+  $$("#boosts select").forEach(s=>s.onchange=()=>{const b={...(S.options.boosts||{})};b[s.dataset.id]=+s.value;setOpt({boosts:b})});
+}
+async function setOpt(o){S=await post("/api/options",o);toast("Saved");renderDifficulty()}
+
+/* builder */
+let qt;$("#q").oninput=()=>{clearTimeout(qt);qt=setTimeout(search,180)};$("#kind").onchange=search;
+async function search(){if(!S.loaded)return;const r=await api(`/api/cards?q=${encodeURIComponent($("#q").value)}&kind=${$("#kind").value}`);
+  $("#results").innerHTML=r.map(c=>{kinds[c.name]=c;const st=["Spell","Trap"].includes(c.kind)?c.kind:`L${c.level} ${c.atk}/${c.df}`;
+    return `<li class="k-${c.kind}" data-id="${c.id}"><span class="nm">${esc(c.name)}</span><span class="stat">${esc(st)}</span><button class="btn small" data-add="${esc(c.name)}" aria-label="Add ${esc(c.name)}">Add</button></li>`}).join("")||"<li>No card matches. Forbidden cards are hidden.</li>";
+  $$("#results li").forEach(l=>l.onclick=e=>{const a=e.target.dataset.add;if(a)return add(a);cardText(l.dataset.id,"#btext")});
+  if(!$("#dload").options.length||$("#dload").options.length<2)$("#dload").innerHTML='<option value="">Start from…</option>'+S.decks.map(x=>`<option value="${esc(x.key)}">${esc(x.name)} (${esc(x.key)})</option>`).join("");
+}
+function add(n){const c=kinds[n];const box=c&&c.kind==="Fusion"?deck.extra:deck.main;box[n]=(box[n]||0)+1;renderDeck()}
+function renderDeck(){const sum=o=>Object.values(o).reduce((a,b)=>a+b,0);
+  const t={Monsters:0,Spells:0,Traps:0};for(const [n,k] of Object.entries(deck.main)){const c=kinds[n];t[c?.kind==="Spell"?"Spells":c?.kind==="Trap"?"Traps":"Monsters"]+=k}
+  $("#dcounts").textContent=`${sum(deck.main)} cards: ${t.Monsters} monsters, ${t.Spells} spells, ${t.Traps} traps; extra deck ${sum(deck.extra)}`;
+  const row=(box,n)=>`<li class="k-${kinds[n]?.kind||"Effect"}"><span class="n">${box[n]}</span><span class="nm">${esc(n)}</span><span class="row"><button class="btn small" data-m="${esc(n)}">−</button><button class="btn small" data-p="${esc(n)}">+</button></span></li>`;
+  $("#dlist").innerHTML=`<ul class="cards">${Object.keys(deck.main).map(n=>row(deck.main,n)).join("")}</ul>`+(sum(deck.extra)?`<div class="grp">Extra deck</div><ul class="cards">${Object.keys(deck.extra).map(n=>row(deck.extra,n)).join("")}</ul>`:"");
+  $$("#dlist button").forEach(b=>b.onclick=()=>{const n=b.dataset.m||b.dataset.p;const box=n in deck.main?deck.main:deck.extra;box[n]+=b.dataset.p?1:-1;if(box[n]<=0)delete box[n];renderDeck()});
+  validate()}
+let vt;function validate(){clearTimeout(vt);vt=setTimeout(async()=>{const r=await post("/api/validate",payload());$("#derr").textContent=r.ok?"":r.errors.join("\n");$("#derr").style.color=r.ok?"var(--ok)":"";if(r.ok)$("#derr").textContent="Legal under the April 2005 Goat list."},250)}
+function payload(){return{name:$("#dname").value,main:Object.entries(deck.main).map(([n,k])=>[k,n]),extra:Object.entries(deck.extra).map(([n,k])=>[k,n])}}
+$("#dsave").onclick=async()=>{try{await post("/api/custom",payload());await refresh();toast("Deck saved");$("#dload").innerHTML=""}catch(e){$("#derr").textContent=e.message}};
+$("#dclear").onclick=()=>{deck={main:{},extra:{}};renderDeck()};
+$("#dload").onchange=async e=>{if(!e.target.value)return;const d=await api("/api/deck?key="+encodeURIComponent(e.target.value));
+  deck={main:{},extra:{}};d.main.forEach(c=>{kinds[c.name]=c;deck.main[c.name]=c.count});d.extra.forEach(c=>{kinds[c.name]=c;deck.extra[c.name]=c.count});
+  $("#dname").value=(d.title||"").slice(0,20);renderDeck()};
+
+/* hidden */
+function renderHidden(){$("#finds").innerHTML=(S.hidden||[]).map(f=>`<div class="find"><h3>${esc(f.title)}</h3><div class="st">${esc(f.status)}${f.how?". "+esc(f.how):""}</div><p>${esc(f.text)}</p></div>`).join("");
+  $("#devscene").innerHTML=Object.entries(S.dev_scenes||{}).map(([k,v])=>`<option value="${k}">${esc(v)}</option>`).join("");
+  $("#devscene").onchange=arenaSel;arenaSel()}
+async function arenaSel(){const on=$("#devscene").value==="arena";$("#arenadeck").hidden=!on;if(!on||!S.loaded)return;
+  if(!PLAN)PLAN=await api("/api/plan");
+  const o=[];PLAN.duelists.forEach(d=>d.decks.forEach(k=>o.push(`<option value="file:${k.file}">${esc(d.name)} – ${esc(TIER[k.tier]||"Custom")}: ${esc(k.name)}</option>`)));
+  S.decks.forEach(x=>o.push(`<option value="${esc(x.key)}">Archetype – ${esc(x.name)}</option>`));S.dev_decks.forEach(x=>o.push(`<option value="${esc(x.key)}">${esc(x.name)}</option>`));
+  $("#arenadeck").innerHTML=o.join("")}
+$("#devbuild").onclick=async()=>{if(!S.loaded)return toast("Load your ROM first");const l=$("#devlog");l.hidden=false;l.textContent="Building…";
+  try{const r=await post("/api/build",{dev_scene:$("#devscene").value,arena_key:$("#arenadeck").hidden?null:$("#arenadeck").value});
+    l.innerHTML=esc(r.log.join("\n"))+`\n\n<a class="btn primary" href="/api/download?t=__STUDIO_TOKEN__">Download ${esc(r.name)}</a>`}catch(e){l.textContent=e.message}};
+
+/* build */
+async function buildSummary(){if(!PLAN)PLAN=await api("/api/plan");const all=PLAN.duelists.flatMap(d=>d.decks);
+  const n=t=>all.filter(k=>!k.override&&k.tier===t).length,c=all.filter(k=>k.override).length,e=all.filter(k=>k.error).length;
+  $("#buildsum").textContent=`${all.length} opponent decks: ${n(1)} Rookie, ${n(2)} Duelist, ${n(3)} Expert, ${n(4)} Goat Max${c?`, ${c} chosen by you`:""}. Preset: ${S.options.preset}. Post-game decks for all: ${S.options.postgame?"on":"off"}.${e?` ${e} deck(s) have errors and must be fixed first.`:""}`}
+$("#build").onclick=async()=>{const l=$("#buildlog");l.hidden=false;l.textContent="Building…";$("#dl").hidden=true;
+  try{const r=await post("/api/build",{});l.textContent=r.log.join("\n");$("#dl").hidden=false;$("#dl").textContent="Download "+r.name;toast("ROM built")}catch(e){l.textContent=e.message}};
+$("#savebtn").onclick=async()=>{try{const r=await post("/api/save",{path:$("#savepath").value});toast("Saved to "+r.path)}catch(e){toast(e.message)}};
+$("#cfgfile").onchange=async e=>{const f=e.target.files[0];if(!f)return;await post("/api/config",JSON.parse(await f.text()));await refresh();PLAN=null;toast("Settings imported")};
+
+refresh();
+</script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+# Game data: never commit ROMs, saves or extracted files
+*.nds
+*.NDS
+*.sav
+*.dsv
+*.ydc
+*.ydq
+*.bin
+*.sdat
+*.zip
+*.7z
+root/
+overlay/
+ftc/
+rom_extraction/
+
+# Studio output
+*.nds.bak
+NT_Goat_plan.txt
+nt_goat_studio.json
+nt_goat_config.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
